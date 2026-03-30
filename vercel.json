@@ -4,18 +4,22 @@
   "outputDirectory": "frontend/dist",
   "framework": "vue",
   "functions": {
-    "api/**/*.py": {
+    "api/index.py": {
       "runtime": "python3.11"
     }
   },
   "rewrites": [
     {
       "source": "/api/v1/(.*)",
-      "destination": "/api/index.py"
+      "destination": "/api/index"
     },
     {
-      "source": "/(.*)",
-      "destination": "/frontend/index.html"
+      "source": "/api",
+      "destination": "/api/index"
+    },
+    {
+      "source": "/((?!api/).*)",
+      "destination": "/index.html"
     }
   ]
 }
