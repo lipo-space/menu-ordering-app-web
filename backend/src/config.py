@@ -15,14 +15,13 @@ class Settings(BaseSettings):
     ENVIRONMENT: str = "development"
 
     # CORS
-    ALLOWED_ORIGINS: str = "http://localhost:5173,http://localhost:3000"
+    ALLOWED_ORIGINS: str = "http://localhost:5173,http://localhost:3000,https://menu-ordering-app-web.vercel.app,https://*.vercel.app"
 
     @property
     def allowed_origins_list(self) -> List[str]:
-        try:
-            return [origin.strip() for origin in self.ALLOWED_ORIGINS.split(",")]
-        except:
-            return ["http://localhost:5173", "http://localhost:3000"]
+        """Parse allowed origins from comma-separated string"""
+        origins = self.ALLOWED_ORIGINS.split(",")
+        return [origin.strip() for origin in origins if origin.strip()]
 
     class Config:
         env_file = ".env"
