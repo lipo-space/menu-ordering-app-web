@@ -46,6 +46,7 @@ dist/
 dist-ssr/
 build/
 *.local
+.vite/
 
 # Testing
 coverage/
