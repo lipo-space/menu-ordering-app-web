@@ -21,7 +21,7 @@ def reshape_menu_response(menu_data):
     }
 
 
-@router.get("/", response_model=dict)
+@router.get("", response_model=dict)
 async def list_menus(
     start_date: Optional[date] = Query(None, description="Filter menus from this date"),
     end_date: Optional[date] = Query(None, description="Filter menus until this date"),
@@ -61,7 +61,7 @@ async def list_menus(
     }
 
 
-@router.post("/", response_model=dict, status_code=201)
+@router.post("", response_model=dict, status_code=201)
 async def create_menu(menu: MenuCreate):
     """Create a new menu"""
     # Check if menu for this date already exists

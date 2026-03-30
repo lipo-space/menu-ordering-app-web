@@ -7,7 +7,7 @@ from ..models.combination import Combination, CombinationCreate, CombinationUpda
 router = APIRouter()
 
 
-@router.get("/", response_model=List[Combination])
+@router.get("", response_model=List[Combination])
 async def list_combinations():
     """List all combinations with their dishes"""
     response = supabase.table('combinations').select(
