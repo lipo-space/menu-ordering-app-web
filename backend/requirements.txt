@@ -4,7 +4,7 @@ uvicorn[standard]==0.27.1
 mangum==0.17.0
 
 # Supabase client
-supabase==2.3.4
+supabase==2.4.0
 
 # Pydantic for data validation
 pydantic==2.6.1
@@ -14,6 +14,9 @@ pydantic-settings==2.2.1
 asyncpg==0.29.0
 sqlalchemy==2.0.25
 
+# HTTP client
+httpx==0.27.0
+
 # Utilities
 python-dotenv==1.0.1
 python-multipart==0.0.9
@@ -21,7 +24,6 @@ python-multipart==0.0.9
 # Development tools
 pytest==7.4.4
 pytest-asyncio==0.23.4
-httpx==0.25.2
 black==24.1.1
 pylint==3.0.3
 mypy==1.8.0
