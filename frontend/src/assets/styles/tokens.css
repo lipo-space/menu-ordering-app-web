@@ -1,0 +1,41 @@
+/* Pixel Art Design System Color Tokens */
+
+:root {
+  /* Warm Color Palette */
+  --color-amber-500: #F59E0B;
+  --color-amber-600: #D97706;
+  --color-coral-400: #F87171;
+  --color-coral-500: #EF4444;
+  --color-peach-300: #FBBF24;
+  --color-peach-400: #F59E0B;
+  --color-cream-100: #FEF3C7;
+  --color-cream-200: #FDE68A;
+
+  /* Neutral Colors */
+  --color-gray-900: #111827;
+  --color-gray-700: #374151;
+  --color-gray-500: #6B7280;
+  --color-gray-300: #D1D5DB;
+  --color-gray-100: #F3F4F6;
+  --color-white: #FFFFFF;
+
+  /* Pixel Art Style */
+  --pixel-border: 2px solid var(--color-gray-900);
+  --pixel-shadow: 4px 4px 0 rgba(0, 0, 0, 0.1);
+  --pixel-shadow-sm: 2px 2px 0 rgba(0, 0, 0, 0.1);
+
+  /* Animation Timing */
+  --transition-fast: 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-base: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+
+  /* Spacing */
+  --spacing-xs: 4px;
+  --spacing-sm: 8px;
+  --spacing-md: 16px;
+  --spacing-lg: 24px;
+  --spacing-xl: 32px;
+
+  /* Border Radius (Pixel Art = Sharp corners) */
+  --radius-none: 0;
+  --radius-sm: 2px;
+}

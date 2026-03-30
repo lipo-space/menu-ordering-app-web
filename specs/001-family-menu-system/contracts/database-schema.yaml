@@ -1,0 +1,350 @@
+# Database Schema: Family Menu Ordering System
+# Supabase PostgreSQL Schema Definition
+
+database: postgresql
+version: "15.0"
+provider: supabase
+
+# ========== ENUMS ==========
+# No custom enums required for this schema
+
+# ========== TABLES ==========
+tables:
+  dishes:
+    description: "Food items in the menu library"
+    columns:
+      id:
+        type: uuid
+        primary_key: true
+        default: "gen_random_uuid()"
+        nullable: false
+      name:
+        type: text
+        nullable: false
+        constraints:
+          - "CHECK (length(name) >= 1 AND length(name) <= 100)"
+      description:
+        type: text
+        nullable: true
+        constraints:
+          - "CHECK (description IS NULL OR length(description) <= 500)"
+      times_paired:
+        type: integer
+        nullable: false
+        default: 0
+        constraints:
+          - "CHECK (times_paired >= 0)"
+      times_enjoyed:
+        type: integer
+        nullable: false
+        default: 0
+        constraints:
+          - "CHECK (times_enjoyed >= 0)"
+      created_at:
+        type: timestamptz
+        nullable: false
+        default: "NOW()"
+      updated_at:
+        type: timestamptz
+        nullable: false
+        default: "NOW()"
+    indexes:
+      idx_dishes_name:
+        columns: [name]
+        type: btree
+      idx_dishes_created_at:
+        columns: [created_at]
+        order: DESC
+        type: btree
+    triggers:
+      update_updated_at:
+        event: BEFORE UPDATE
+        function: update_updated_at_column()
+        for_each: ROW
+
+  menus:
+    description: "Daily menu records (one per date)"
+    columns:
+      id:
+        type: uuid
+        primary_key: true
+        default: "gen_random_uuid()"
+        nullable: false
+      date:
+        type: date
+        nullable: false
+        unique: true
+      created_at:
+        type: timestamptz
+        nullable: false
+        default: "NOW()"
+    indexes:
+      idx_menus_date:
+        columns: [date]
+        order: DESC
+        unique: true
+        type: btree
+
+  menu_dishes:
+    description: "Junction table for many-to-many menu-dish relationship"
+    columns:
+      menu_id:
+        type: uuid
+        nullable: false
+        references:
+          table: menus
+          column: id
+          on_delete: CASCADE
+      dish_id:
+        type: uuid
+        nullable: false
+        references:
+          table: dishes
+          column: id
+          on_delete: RESTRICT
+    primary_key:
+      columns: [menu_id, dish_id]
+    indexes:
+      idx_menu_dishes_dish_id:
+        columns: [dish_id]
+        type: btree
+
+  combinations:
+    description: "Saved dish combinations for quick menu creation"
+    columns:
+      id:
+        type: uuid
+        primary_key: true
+        default: "gen_random_uuid()"
+        nullable: false
+      name:
+        type: text
+        nullable: false
+        constraints:
+          - "CHECK (length(name) >= 1 AND length(name) <= 100)"
+      created_at:
+        type: timestamptz
+        nullable: false
+        default: "NOW()"
+    indexes:
+      idx_combinations_name:
+        columns: [name]
+        type: btree
+      idx_combinations_created_at:
+        columns: [created_at]
+        order: DESC
+        type: btree
+
+  combination_dishes:
+    description: "Junction table for many-to-many combination-dish relationship"
+    columns:
+      combination_id:
+        type: uuid
+        nullable: false
+        references:
+          table: combinations
+          column: id
+          on_delete: CASCADE
+      dish_id:
+        type: uuid
+        nullable: false
+        references:
+          table: dishes
+          column: id
+          on_delete: RESTRICT
+    primary_key:
+      columns: [combination_id, dish_id]
+    indexes:
+      idx_combination_dishes_dish_id:
+        columns: [dish_id]
+        type: btree
+
+# ========== FUNCTIONS ==========
+functions:
+  update_updated_at_column:
+    description: "Automatically update the updated_at timestamp"
+    language: plpgsql
+    returns: trigger
+    body: |
+      BEGIN
+        NEW.updated_at = NOW();
+        RETURN NEW;
+      END;
+
+# ========== ROW LEVEL SECURITY ==========
+row_level_security:
+  enabled: true
+  tables:
+    dishes:
+      policies:
+        - name: "Users can view own dishes"
+          operation: SELECT
+          using: "family_id = auth.uid()"
+        - name: "Users can insert own dishes"
+          operation: INSERT
+          with_check: "family_id = auth.uid()"
+        - name: "Users can update own dishes"
+          operation: UPDATE
+          using: "family_id = auth.uid()"
+        - name: "Users can delete own dishes"
+          operation: DELETE
+          using: "family_id = auth.uid()"
+
+    menus:
+      policies:
+        - name: "Users can view own menus"
+          operation: SELECT
+          using: "family_id = auth.uid()"
+        - name: "Users can insert own menus"
+          operation: INSERT
+          with_check: "family_id = auth.uid()"
+        - name: "Users can update own menus"
+          operation: UPDATE
+          using: "family_id = auth.uid()"
+        - name: "Users can delete own menus"
+          operation: DELETE
+          using: "family_id = auth.uid()"
+
+    menu_dishes:
+      policies:
+        - name: "Users can view own menu dishes"
+          operation: SELECT
+          using: "family_id = auth.uid()"
+        - name: "Users can insert own menu dishes"
+          operation: INSERT
+          with_check: "family_id = auth.uid()"
+        - name: "Users can delete own menu dishes"
+          operation: DELETE
+          using: "family_id = auth.uid()"
+
+    combinations:
+      policies:
+        - name: "Users can view own combinations"
+          operation: SELECT
+          using: "family_id = auth.uid()"
+        - name: "Users can insert own combinations"
+          operation: INSERT
+          with_check: "family_id = auth.uid()"
+        - name: "Users can update own combinations"
+          operation: UPDATE
+          using: "family_id = auth.uid()"
+        - name: "Users can delete own combinations"
+          operation: DELETE
+          using: "family_id = auth.uid()"
+
+    combination_dishes:
+      policies:
+        - name: "Users can view own combination dishes"
+          operation: SELECT
+          using: "family_id = auth.uid()"
+        - name: "Users can insert own combination dishes"
+          operation: INSERT
+          with_check: "family_id = auth.uid()"
+        - name: "Users can delete own combination dishes"
+          operation: DELETE
+          using: "family_id = auth.uid()"
+
+# ========== MIGRATION SCRIPT ==========
+migration_sql: |
+  -- Enable UUID extension
+  CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+
+  -- Create update_updated_at_column function
+  CREATE OR REPLACE FUNCTION update_updated_at_column()
+  RETURNS TRIGGER AS $$
+  BEGIN
+    NEW.updated_at = NOW();
+    RETURN NEW;
+  END;
+  $$ language 'plpgsql';
+
+  -- Create dishes table
+  CREATE TABLE dishes (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    name TEXT NOT NULL CHECK (length(name) >= 1 AND length(name) <= 100),
+    description TEXT CHECK (description IS NULL OR length(description) <= 500),
+    times_paired INTEGER NOT NULL DEFAULT 0 CHECK (times_paired >= 0),
+    times_enjoyed INTEGER NOT NULL DEFAULT 0 CHECK (times_enjoyed >= 0),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  );
+
+  -- Create dishes indexes
+  CREATE INDEX idx_dishes_name ON dishes(name);
+  CREATE INDEX idx_dishes_created_at ON dishes(created_at DESC);
+
+  -- Create dishes trigger
+  CREATE TRIGGER update_dishes_updated_at BEFORE UPDATE ON dishes
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+  -- Create menus table
+  CREATE TABLE menus (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    date DATE NOT NULL UNIQUE,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  );
+
+  -- Create menus index
+  CREATE UNIQUE INDEX idx_menus_date ON menus(date DESC);
+
+  -- Create menu_dishes junction table
+  CREATE TABLE menu_dishes (
+    menu_id UUID NOT NULL REFERENCES menus(id) ON DELETE CASCADE,
+    dish_id UUID NOT NULL REFERENCES dishes(id) ON DELETE RESTRICT,
+    PRIMARY KEY (menu_id, dish_id)
+  );
+
+  -- Create menu_dishes index
+  CREATE INDEX idx_menu_dishes_dish_id ON menu_dishes(dish_id);
+
+  -- Create combinations table
+  CREATE TABLE combinations (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    name TEXT NOT NULL CHECK (length(name) >= 1 AND length(name) <= 100),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  );
+
+  -- Create combinations indexes
+  CREATE INDEX idx_combinations_name ON combinations(name);
+  CREATE INDEX idx_combinations_created_at ON combinations(created_at DESC);
+
+  -- Create combination_dishes junction table
+  CREATE TABLE combination_dishes (
+    combination_id UUID NOT NULL REFERENCES combinations(id) ON DELETE CASCADE,
+    dish_id UUID NOT NULL REFERENCES dishes(id) ON DELETE RESTRICT,
+    PRIMARY KEY (combination_id, dish_id)
+  );
+
+  -- Create combination_dishes index
+  CREATE INDEX idx_combination_dishes_dish_id ON combination_dishes(dish_id);
+
+  -- Enable Row Level Security
+  ALTER TABLE dishes ENABLE ROW LEVEL SECURITY;
+  ALTER TABLE menus ENABLE ROW LEVEL SECURITY;
+  ALTER TABLE menu_dishes ENABLE ROW LEVEL SECURITY;
+  ALTER TABLE combinations ENABLE ROW LEVEL SECURITY;
+  ALTER TABLE combination_dishes ENABLE ROW LEVEL SECURITY;
+
+# ========== SEED DATA ==========
+seed_data:
+  dishes:
+    - name: "红烧肉"
+      description: "经典家常菜，肥而不腻"
+    - name: "宫保鸡丁"
+      description: "川菜经典，麻辣鲜香"
+    - name: "清炒时蔬"
+      description: "清爽健康，营养丰富"
+    - name: "番茄炒蛋"
+      description: "简单美味，老少皆宜"
+    - name: "糖醋里脊"
+      description: "酸甜可口，外酥里嫩"
+
+# ========== NOTES ==========
+notes:
+  - "All timestamps use TIMESTAMPTZ (with timezone) for proper timezone handling"
+  - "UUIDs used for all primary keys (better for distributed systems and security)"
+  - "RESTRICT on dish deletion preserves historical data integrity"
+  - "CASCADE on menu/combination deletion cleans up junction tables automatically"
+  - "RLS policies assume family_id column exists (to be added during auth implementation)"
+  - "Performance indexes on frequently queried columns (name, date, created_at)"
+  - "Composite primary keys on junction tables prevent duplicate relationships"

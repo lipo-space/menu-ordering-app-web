@@ -1,0 +1,811 @@
+openapi: 3.0.3
+info:
+  title: Family Menu Ordering System API
+  description: RESTful API for family menu planning and dish management
+  version: 1.0.0
+  contact:
+    name: API Support
+
+servers:
+  - url: /api/v1
+    description: API version 1
+
+tags:
+  - name: dishes
+    description: Dish management operations
+  - name: menus
+    description: Daily menu operations
+  - name: combinations
+    description: Combination management operations
+  - name: history
+    description: Historical menu queries
+
+paths:
+  # ========== DISHES ==========
+  /dishes:
+    get:
+      tags: [dishes]
+      summary: List all dishes
+      description: Retrieve all dishes in the library with optional search filter
+      parameters:
+        - name: search
+          in: query
+          description: Search term for dish name (case-insensitive)
+          required: false
+          schema:
+            type: string
+            maxLength: 100
+        - name: limit
+          in: query
+          description: Maximum number of dishes to return
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 50
+        - name: offset
+          in: query
+          description: Number of dishes to skip (for pagination)
+          required: false
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+      responses:
+        '200':
+          description: Successful response with list of dishes
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Dish'
+                  meta:
+                    $ref: '#/components/schemas/PaginationMeta'
+              examples:
+                dishes_list:
+                  value:
+                    data:
+                      - id: "550e8400-e29b-41d4-a716-446655440000"
+                        name: "红烧肉"
+                        description: "经典家常菜"
+                        times_paired: 5
+                        times_enjoyed: 12
+                        created_at: "2026-03-30T10:00:00Z"
+                        updated_at: "2026-03-30T10:00:00Z"
+                    meta:
+                      total: 25
+                      limit: 50
+                      offset: 0
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+    post:
+      tags: [dishes]
+      summary: Create a new dish
+      description: Add a new dish to the menu library
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateDish'
+            examples:
+              new_dish:
+                value:
+                  name: "宫保鸡丁"
+                  description: "川菜经典，麻辣鲜香"
+      responses:
+        '201':
+          description: Dish created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Dish'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '409':
+          description: Dish with this name already exists
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /dishes/{dishId}:
+    get:
+      tags: [dishes]
+      summary: Get dish details
+      description: Retrieve detailed information about a specific dish including statistics
+      parameters:
+        - $ref: '#/components/parameters/dishId'
+      responses:
+        '200':
+          description: Successful response with dish details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Dish'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+    put:
+      tags: [dishes]
+      summary: Update dish
+      description: Update dish name and/or description
+      parameters:
+        - $ref: '#/components/parameters/dishId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateDish'
+      responses:
+        '200':
+          description: Dish updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Dish'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+    delete:
+      tags: [dishes]
+      summary: Delete dish
+      description: Remove dish from library. Fails if dish is used in combinations or historical menus.
+      parameters:
+        - $ref: '#/components/parameters/dishId'
+      responses:
+        '204':
+          description: Dish deleted successfully
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          description: Cannot delete dish - it is used in combinations or menus
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                conflict:
+                  value:
+                    error:
+                      code: "DISH_IN_USE"
+                      message: "Cannot delete dish - it is used in 3 combinations and 5 historical menus"
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  # ========== MENUS ==========
+  /menus:
+    get:
+      tags: [menus]
+      summary: List menus with optional date filter
+      description: Retrieve menus with filtering by date range
+      parameters:
+        - name: start_date
+          in: query
+          description: Filter menus from this date (inclusive)
+          required: false
+          schema:
+            type: string
+            format: date
+        - name: end_date
+          in: query
+          description: Filter menus until this date (inclusive)
+          required: false
+          schema:
+            type: string
+            format: date
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 30
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+      responses:
+        '200':
+          description: Successful response with list of menus
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/MenuWithDishes'
+                  meta:
+                    $ref: '#/components/schemas/PaginationMeta'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+    post:
+      tags: [menus]
+      summary: Create a new menu
+      description: Create a menu for a specific date with selected dishes
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateMenu'
+            examples:
+              new_menu:
+                value:
+                  date: "2026-03-30"
+                  dish_ids:
+                    - "550e8400-e29b-41d4-a716-446655440000"
+                    - "550e8400-e29b-41d4-a716-446655440001"
+      responses:
+        '201':
+          description: Menu created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MenuWithDishes'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '409':
+          description: Menu already exists for this date
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /menus/{date}:
+    get:
+      tags: [menus]
+      summary: Get menu by date
+      description: Retrieve the menu for a specific date
+      parameters:
+        - $ref: '#/components/parameters/menuDate'
+      responses:
+        '200':
+          description: Successful response with menu details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MenuWithDishes'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+    put:
+      tags: [menus]
+      summary: Update menu
+      description: Replace all dishes in a menu for a specific date
+      parameters:
+        - $ref: '#/components/parameters/menuDate'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateMenu'
+      responses:
+        '200':
+          description: Menu updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MenuWithDishes'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+    delete:
+      tags: [menus]
+      summary: Delete menu
+      description: Remove menu for a specific date
+      parameters:
+        - $ref: '#/components/parameters/menuDate'
+      responses:
+        '204':
+          description: Menu deleted successfully
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  # ========== COMBINATIONS ==========
+  /combinations:
+    get:
+      tags: [combinations]
+      summary: List all combinations
+      description: Retrieve all saved dish combinations
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 50
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+      responses:
+        '200':
+          description: Successful response with list of combinations
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/CombinationWithDishes'
+                  meta:
+                    $ref: '#/components/schemas/PaginationMeta'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+    post:
+      tags: [combinations]
+      summary: Create a new combination
+      description: Create a combination with selected dishes
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateCombination'
+            examples:
+              new_combination:
+                value:
+                  name: "周末家常菜"
+                  dish_ids:
+                    - "550e8400-e29b-41d4-a716-446655440000"
+                    - "550e8400-e29b-41d4-a716-446655440001"
+      responses:
+        '201':
+          description: Combination created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CombinationWithDishes'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /combinations/{combinationId}:
+    get:
+      tags: [combinations]
+      summary: Get combination details
+      description: Retrieve detailed information about a specific combination
+      parameters:
+        - $ref: '#/components/parameters/combinationId'
+      responses:
+        '200':
+          description: Successful response with combination details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CombinationWithDishes'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+    put:
+      tags: [combinations]
+      summary: Update combination
+      description: Update combination name and/or dishes
+      parameters:
+        - $ref: '#/components/parameters/combinationId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateCombination'
+      responses:
+        '200':
+          description: Combination updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CombinationWithDishes'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+    delete:
+      tags: [combinations]
+      summary: Delete combination
+      description: Remove a combination from the library
+      parameters:
+        - $ref: '#/components/parameters/combinationId'
+      responses:
+        '204':
+          description: Combination deleted successfully
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  # ========== HISTORY ==========
+  /history:
+    get:
+      tags: [history]
+      summary: Get menu history
+      description: Retrieve historical menus with date range filtering
+      parameters:
+        - name: start_date
+          in: query
+          description: Filter menus from this date (inclusive)
+          required: false
+          schema:
+            type: string
+            format: date
+        - name: end_date
+          in: query
+          description: Filter menus until this date (inclusive)
+          required: false
+          schema:
+            type: string
+            format: date
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 30
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+      responses:
+        '200':
+          description: Successful response with historical menus
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/MenuWithDishes'
+                  meta:
+                    $ref: '#/components/schemas/PaginationMeta'
+              examples:
+                history_list:
+                  value:
+                    data:
+                      - id: "550e8400-e29b-41d4-a716-446655440010"
+                        date: "2026-03-29"
+                        dishes:
+                          - id: "550e8400-e29b-41d4-a716-446655440000"
+                            name: "红烧肉"
+                            description: "经典家常菜"
+                        created_at: "2026-03-29T08:00:00Z"
+                    meta:
+                      total: 45
+                      limit: 30
+                      offset: 0
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+components:
+  # ========== PARAMETERS ==========
+  parameters:
+    dishId:
+      name: dishId
+      in: path
+      description: Unique dish identifier (UUID)
+      required: true
+      schema:
+        type: string
+        format: uuid
+
+    menuDate:
+      name: date
+      in: path
+      description: Menu date (YYYY-MM-DD format)
+      required: true
+      schema:
+        type: string
+        format: date
+      example: "2026-03-30"
+
+    combinationId:
+      name: combinationId
+      in: path
+      description: Unique combination identifier (UUID)
+      required: true
+      schema:
+        type: string
+        format: uuid
+
+  # ========== SCHEMAS ==========
+  schemas:
+    Dish:
+      type: object
+      required: [id, name, times_paired, times_enjoyed, created_at, updated_at]
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Unique dish identifier
+        name:
+          type: string
+          minLength: 1
+          maxLength: 100
+          description: Dish name
+        description:
+          type: string
+          maxLength: 500
+          nullable: true
+          description: Optional dish description
+        times_paired:
+          type: integer
+          minimum: 0
+          description: Number of combinations containing this dish
+        times_enjoyed:
+          type: integer
+          minimum: 0
+          description: Total times this dish appeared in menus
+        created_at:
+          type: string
+          format: date-time
+          description: Creation timestamp
+        updated_at:
+          type: string
+          format: date-time
+          description: Last update timestamp
+
+    CreateDish:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 100
+        description:
+          type: string
+          maxLength: 500
+          nullable: true
+
+    UpdateDish:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 100
+        description:
+          type: string
+          maxLength: 500
+          nullable: true
+
+    MenuWithDishes:
+      type: object
+      required: [id, date, dishes, created_at]
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Unique menu identifier
+        date:
+          type: string
+          format: date
+          description: Menu date
+        dishes:
+          type: array
+          items:
+            $ref: '#/components/schemas/Dish'
+          description: List of dishes in this menu
+        created_at:
+          type: string
+          format: date-time
+          description: Creation timestamp
+
+    CreateMenu:
+      type: object
+      required: [date, dish_ids]
+      properties:
+        date:
+          type: string
+          format: date
+        dish_ids:
+          type: array
+          minItems: 1
+          items:
+            type: string
+            format: uuid
+          description: List of dish IDs to include in menu
+
+    UpdateMenu:
+      type: object
+      required: [dish_ids]
+      properties:
+        dish_ids:
+          type: array
+          minItems: 1
+          items:
+            type: string
+            format: uuid
+          description: Updated list of dish IDs
+
+    CombinationWithDishes:
+      type: object
+      required: [id, name, dishes, created_at]
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Unique combination identifier
+        name:
+          type: string
+          minLength: 1
+          maxLength: 100
+          description: Combination name
+        dishes:
+          type: array
+          items:
+            $ref: '#/components/schemas/Dish'
+          description: List of dishes in this combination
+        created_at:
+          type: string
+          format: date-time
+          description: Creation timestamp
+
+    CreateCombination:
+      type: object
+      required: [name, dish_ids]
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 100
+        dish_ids:
+          type: array
+          minItems: 1
+          items:
+            type: string
+            format: uuid
+          description: List of dish IDs to include
+
+    UpdateCombination:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 100
+        dish_ids:
+          type: array
+          minItems: 1
+          items:
+            type: string
+            format: uuid
+          description: Updated list of dish IDs
+
+    PaginationMeta:
+      type: object
+      properties:
+        total:
+          type: integer
+          description: Total number of items
+        limit:
+          type: integer
+          description: Items per page
+        offset:
+          type: integer
+          description: Current offset
+
+    Error:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: object
+          required: [code, message]
+          properties:
+            code:
+              type: string
+              description: Error code
+              enum:
+                - VALIDATION_ERROR
+                - NOT_FOUND
+                - DISH_IN_USE
+                - MENU_EXISTS
+                - INTERNAL_ERROR
+            message:
+              type: string
+              description: Human-readable error message
+            details:
+              type: object
+              description: Additional error details
+
+  # ========== RESPONSES ==========
+  responses:
+    BadRequest:
+      description: Invalid request parameters
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          examples:
+            validation_error:
+              value:
+                error:
+                  code: "VALIDATION_ERROR"
+                  message: "Dish name must be between 1 and 100 characters"
+                  details:
+                    field: "name"
+
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          examples:
+            not_found:
+              value:
+                error:
+                  code: "NOT_FOUND"
+                  message: "Dish with ID 550e8400-e29b-41d4-a716-446655440000 not found"
+
+    InternalError:
+      description: Internal server error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          examples:
+            internal_error:
+              value:
+                error:
+                  code: "INTERNAL_ERROR"
+                  message: "An unexpected error occurred"

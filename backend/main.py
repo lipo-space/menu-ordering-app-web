@@ -1,0 +1,10 @@
+"""
+Local development entry point
+This file imports the FastAPI app from src.api for local development.
+In production (Vercel), the app is served directly from src/api/__init__.py
+"""
+from src.api import app
+import uvicorn
+
+if __name__ == "__main__":
+    uvicorn.run(app, host="0.0.0.0", port=8002)
