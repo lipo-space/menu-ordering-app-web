@@ -6,7 +6,7 @@ from ..db.supabase_client import supabase
 router = APIRouter()
 
 
-@router.get("/", response_model=dict)
+@router.get("", response_model=dict)
 async def list_dishes(
     search: Optional[str] = Query(None, description="Search dishes by name"),
     limit: int = Query(50, ge=1, le=100, description="Number of dishes to return"),
@@ -39,7 +39,7 @@ async def list_dishes(
     }
 
 
-@router.post("/", response_model=Dish, status_code=201)
+@router.post("", response_model=Dish, status_code=201)
 async def create_dish(dish: DishCreate):
     """Create a new dish"""
     # Check for duplicate name
