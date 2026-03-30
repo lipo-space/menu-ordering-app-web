@@ -1,8 +1,8 @@
 """
-Vercel serverless entry point
+Vercel serverless function entry point for FastAPI backend
 """
 from mangum import Mangum
-from src.api import app
+from backend.src.api import app
 
 # Export handler for Vercel
 handler = Mangum(app, lifespan="off")
